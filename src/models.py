@@ -13,6 +13,7 @@ class User(db.Model):
     password: Mapped[str] = mapped_column(String(255),nullable=False)
     posts: Mapped[list["Post"]] = relationship(back_populates = "creator")
     comments: Mapped[list["Comment"]] = relationship(back_populates = "creator")
+    likes: Mapped[list["Like"]] = relationship(back_populates = "user")
 
 
     def serialize(self):
@@ -34,6 +35,7 @@ class Post(db.Model):
     creator_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
     creator: Mapped["User"] = relationship(back_populates = "posts")
     comments: Mapped[list["Comment"]] = relationship(back_populates = "post")
+    likes: Mapped[list["Like"]] = relationship(back_populates = "post")
 
     def serialize(self):
         return {
@@ -58,4 +60,18 @@ class Comment(db.Model):
             "content": self.content,
             "post_id": self.post_id,
             "creator_id": self.creator_id,
+        }
+
+class Like(db.Model):
+    id: Mapped[int] = mapped_column(primary_key = True)
+    post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
+    post: Mapped["Post"] = relationship(back_populates = "likes")
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
+    user: Mapped["User"] = relationship(back_populates = "likes")
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "post_id": self.post_id,
+            "user_id": self.user_id,
         }
