@@ -60,8 +60,8 @@ class Post(db.Model):
             "id": self.id,
             "caption": self.caption,
             "media_url": self.media_url,
-            "user_id": self.creator_id,
-            "user": self.creator,
+            "user_id": self.user_id,
+            "user": self.user,
             "comments": [comment.serialize() for comment in self.comments],
         }
 
@@ -81,7 +81,7 @@ class Comment(db.Model):
             "id": self.id,
             "content": self.content,
             "post_id": self.post_id,
-            "creator_id": self.creator_id,
+            "user_id": self.user_id,
             "post": self.post,
             "user": self.user,
         }
