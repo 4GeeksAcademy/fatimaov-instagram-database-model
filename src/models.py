@@ -11,9 +11,21 @@ class User(db.Model):
     last_name: Mapped[str] = mapped_column(String(120), unique=False, nullable=False)
     email: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
     password: Mapped[str] = mapped_column(String(255),nullable=False)
-    posts: Mapped[list["Post"]] = relationship(back_populates = "creator")
-    comments: Mapped[list["Comment"]] = relationship(back_populates = "creator")
-    likes: Mapped[list["Like"]] = relationship(back_populates = "user")
+
+    # Relationship One - Many
+    posts: Mapped[list["Post"]] = relationship("Post", back_populates = "user")
+    comments: Mapped[list["Comment"]] = relationship("Comment", back_populates = "user")
+    likes: Mapped[list["Like"]] = relationship("Like", back_populates = "user")
+    # Relationship Many - Many
+    followings: Mapped[list["Follows"]] = relationship("Follows",
+        foreign_keys="Follows.follower_id",
+        back_populates="follower"
+    )
+    followers: Mapped[list["Follows"]] = relationship(
+        "Follows",
+        foreign_keys="Follows.followed_id",
+        back_populates="followed"
+    )
 
 
     def serialize(self):
@@ -25,6 +37,8 @@ class User(db.Model):
             "email": self.email,
             "posts": [post.serialize() for post in self.posts],
             "comments": [comment.serialize() for comment in self.comments],
+            "followings": [following.serialize() for following in self.followings],
+            "followwers": [follower.serialize() for follower in self.followers],
             # do not serialize the password, its a security breach
         }
 
@@ -32,27 +46,35 @@ class Post(db.Model):
     id: Mapped[int] = mapped_column(primary_key = True)
     caption: Mapped[str] = mapped_column(String(150), unique = False, nullable = True)
     media_url: Mapped[str] = mapped_column(String(255), unique = False, nullable = False)
-    creator_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
-    creator: Mapped["User"] = relationship(back_populates = "posts")
-    comments: Mapped[list["Comment"]] = relationship(back_populates = "post")
-    likes: Mapped[list["Like"]] = relationship(back_populates = "post")
+    # ForeignKey
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
+
+    # Relationship Many - One
+    user: Mapped["User"] = relationship("User", back_populates = "posts")
+    # Relationship One - Many
+    comments: Mapped[list["Comment"]] = relationship("Comment", back_populates = "post")
+    likes: Mapped[list["Like"]] = relationship("Like", back_populates = "post")
 
     def serialize(self):
         return {
             "id": self.id,
             "caption": self.caption,
             "media_url": self.media_url,
-            "creator_id": self.creator_id,
+            "user_id": self.creator_id,
+            "user": self.creator,
             "comments": [comment.serialize() for comment in self.comments],
         }
 
 class Comment(db.Model):
     id: Mapped[int] = mapped_column(primary_key = True)
     content: Mapped[str] = mapped_column(String(500), nullable = False)
+    # ForeignKeys
     post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
-    post: Mapped["Post"] = relationship(back_populates = "comments")
-    creator_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
-    creator: Mapped["User"] = relationship(back_populates = "comments")
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
+
+    # Relationship Many - One
+    user: Mapped["User"] = relationship("User", back_populates = "comments")
+    post: Mapped["Post"] = relationship("Post", back_populates = "comments")
 
     def serialize(self):
         return {
@@ -60,14 +82,19 @@ class Comment(db.Model):
             "content": self.content,
             "post_id": self.post_id,
             "creator_id": self.creator_id,
+            "post": self.post,
+            "user": self.user,
         }
 
 class Like(db.Model):
     id: Mapped[int] = mapped_column(primary_key = True)
+    # ForeignKeys
     post_id: Mapped[int] = mapped_column(ForeignKey("post.id"))
-    post: Mapped["Post"] = relationship(back_populates = "likes")
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
-    user: Mapped["User"] = relationship(back_populates = "likes")
+
+    # Relationship Many - One
+    post: Mapped["Post"] = relationship("Post", back_populates = "likes")
+    user: Mapped["User"] = relationship("User", back_populates = "likes")
 
     def serialize(self):
         return {
@@ -75,3 +102,21 @@ class Like(db.Model):
             "post_id": self.post_id,
             "user_id": self.user_id,
         }
+    
+class Follows(db.Model):
+    id: Mapped[int] = mapped_column(primary_key = True)
+    # ForeignKeys
+    follower_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
+    followed_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
+
+    # Relationship Many - Many
+    follower: Mapped["User"] = relationship(
+        "User",
+        foreign_keys=[follower_id],
+        back_populates="followings"
+    )
+    followed: Mapped["User"] = relationship(
+        "User",
+        foreign_keys=[followed_id],
+        back_populates="followers"
+    )
